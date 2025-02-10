@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block content %}
+
+   <!-- displays workout timer and some quick reminders -->
+   <div>
+       <h3>Workout Duration: {{ session.get('workout_timer', '00:00:00') }}</h3>
+       <p>** Remember to rest 90 seconds between sets for optimal recovery **</p>
+       
+       <!-- shows last set completion time only if there are exercises logged -->
+       {% if current_exercises %}
+           <p>Last set completed at: {{ session.get('last_set_time', 'N/A') }}</p>
+       {% endif %}
+   </div>
+
+   <div>
+       <h3>Current Step: Adding Exercises to Your Workout</h3>
+       <p>Fill in the exercise details below. You can add multiple exercises before finishing.</p>
+   </div>
+
+   <!-- toggles for hiding elements (previous sets, guides, suggestions) -->
+   <div>
+       <input type="checkbox" id="hideHistory" onclick="toggleHistory()">
+       <label for="hideHistory">Hide Previous Sets</label>
+
+       <input type="checkbox" id="hideGuides" onclick="toggleGuides()">
+       <label for="hideGuides">Hide Exercise Guides</label>
+
+       <input type="checkbox" name="hide_suggestions" value="true">
+       <label for="hide_suggestions">Hide Suggestions</label>
+   </div>
+
+   {% if current_exercises %}
+       <!-- exercise history if the user has logged exercises -->
+       <div id="exerciseHistory">
+           <h3>Current Workout:</h3>
+           {% for exercise in current_exercises %}
+               <div>
+                   {{ exercise.name }}: {{ exercise.sets }}x{{ exercise.reps }} @ {{ exercise.weight }} lbs
+               </div>
+           {% endfor %}
+           
+           <!-- Undo button in case the user accidentally adds an exercise -->
+           <form action="{{ url_for('undo_last_exercise') }}" method="post">
+               <button type="submit">Undo Last Exercise</button>
+           </form>
+       </div>
+   {% endif %}
+
+   <!-- user chooses how they want to enter exercises -->
+   <div>
+       <h4>Exercise Entry Options:</h4>
+       <select name="entry_method" id="entryMethod">
+           <option value="manual">Manual Entry</option>
+           <option value="quick">Quick Add (Last Used)</option>
+           <option value="template">From Template</option>
+       </select>
+   </div>
+
+   <!-- for adding exercises -->
+   <form method="post">
+       <div>
+           <label>Exercise Name:</label>
+           <input type="text" name="exercise_name" required>
+       </div>
+
+       <div>
+           <label>Weight (lbs):</label>
+           <input type="number" name="weight" required>
+       </div>
+
+       <div>
+           <label>Sets:</label>
+           <input type="number" name="sets" required>
+       </div>
+
+       <div>
+           <label>Reps:</label>
+           <input type="number" name="reps" required>
+       </div>
+
+       <button type="submit">Add Exercise</button>
+   </form>
+
+   <!-- finishes the workout -->
+   <form action="{{ url_for('finish_workout') }}" method="post">
+       <button type="submit">Finish Workout</button>
+   </form>
+
+{% endblock %}

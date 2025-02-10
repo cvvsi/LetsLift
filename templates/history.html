@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content %}
+
+    <!-- page title -->
+    <h2>your workout history</h2>
+    
+    <!-- quick summary showing the total number of logged workouts -->
+    <div style="background: #eee; padding: 10px; margin: 10px 0;">
+        number of workouts: {{ workouts|length if workouts else 0 }}
+    </div>
+    
+    {% if workouts and workouts|length > 0 %}
+        <!-- loop through each workout and display details -->
+        {% for workout in workouts %}
+            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
+                <h3>workout {{ loop.index }}</h3>
+                <p>started: {{ workout.start_time }}</p>
+                <p>ended: {{ workout.end_time }}</p>
+                
+                <!-- list of exercises performed during this workout -->
+                <h4>exercises:</h4>
+                <ul>
+                {% for exercise in workout.exercises %}
+                    <li>{{ exercise.name }}: {{ exercise.sets }}x{{ exercise.reps }} @ {{ exercise.weight }}</li>
+                {% endfor %}
+                </ul>
+                
+                <!-- optional workout notes if any were added -->
+                {% if workout.notes %}
+                    <p><strong>notes:</strong> {{ workout.notes }}</p>
+                {% endif %}
+            </div>
+        {% endfor %}
+    {% else %}
+        <!-- message displayed if there are no past workouts -->
+        <p>no workouts found. <a href="{{ url_for('start_workout') }}">start your first workout!</a></p>
+    {% endif %}
+
+{% endblock %}
