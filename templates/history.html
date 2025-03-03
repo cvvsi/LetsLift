@@ -9,6 +9,12 @@
         number of workouts: {{ workouts|length if workouts else 0 }}
     </div>
     
+    {% if current_streak > 0 %}
+        <div style="background: #4CAF50; color: white; padding: 10px; margin: 10px 0; border-radius: 4px;">
+            🔥 Current Streak: {{ current_streak }} days
+        </div>
+    {% endif %}
+    
     {% if workouts and workouts|length > 0 %}
         <!-- loop through each workout and display details -->
         {% for workout in workouts %}

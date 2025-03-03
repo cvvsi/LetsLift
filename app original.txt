@@ -1,3 +1,5 @@
+app.py (original)
+
 from flask import Flask, render_template, request, redirect, url_for, flash, session
 from datetime import datetime
 import sqlite3
@@ -200,49 +202,31 @@ def undo_last_exercise():
 # complete and save workout
 @app.route('/workout/finish', methods=['POST'])
 def finish_workout():
-    current_workout = load_current_workout()
-    if not current_workout.get('exercises'):
-        flash('add at least one exercise to save your workout!')
-        return redirect(url_for('add_exercise'))
+   current_workout = load_current_workout()
+   if not current_workout.get('exercises'):
+       flash('add at least one exercise to save your workout!')
+       return redirect(url_for('add_exercise'))
 
-    # record end time and save workout
-    current_workout['end_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    current_workout['notes'] = request.form.get('workout_notes', '')
-    
-    save_workout(current_workout)
-    
-    # Write today's date to workout_date.txt (microservice A, streaks)
-    today = datetime.now().strftime("%m-%d-%Y")  # This will use the current year (2024)
-    microservice_path = "Microservice A (Built by teammate)/microservice_a-main/workout_date.txt"
-    with open(microservice_path, 'w') as f:
-        f.write(today)
-    
-    import os
-    if os.path.exists('current_workout.json'):
-        os.remove('current_workout.json')
-    session.pop('workout_in_progress', None)
-    
-    flash('great job! workout saved.')
-    return redirect(url_for('view_history'))
+   # record end time and save workout
+   current_workout['end_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
+   current_workout['notes'] = request.form.get('workout_notes', '')
+   
+   save_workout(current_workout)
+   import os
+   if os.path.exists('current_workout.json'):
+       os.remove('current_workout.json')
+   session.pop('workout_in_progress', None)
+   
+   flash('great job! workout saved.')
+   return redirect(url_for('view_history'))
 
 # view workout history
 @app.route('/history')
 def view_history():
-    workouts = get_workouts()
-    
-    # Reads current streak from streak_results.txt (microservice A, streaks)
-    current_streak = 0
-    try:
-        streak_path = "Microservice A (Built by teammate)/microservice_a-main/streak_results.txt"
-        with open(streak_path, 'r') as f:
-            current_streak = int(f.read().strip())
-    except (FileNotFoundError, ValueError):
-        pass
-        
-    return render_template('history.html', 
-        workouts=workouts,
-        current_streak=current_streak,
-        modifications_enabled=True)
+   workouts = get_workouts()
+   return render_template('history.html', 
+       workouts=workouts,
+       modifications_enabled=True)
 
 # initialize database and start app
 if __name__ == '__main__':
