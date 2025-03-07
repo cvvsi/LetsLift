@@ -1,45 +1,58 @@
 {% extends "base.html" %}
-{% block content %}
 
-    <!-- page title -->
-    <h2>your workout history</h2>
-    
-    <!-- quick summary showing the total number of logged workouts -->
-    <div style="background: #eee; padding: 10px; margin: 10px 0;">
-        number of workouts: {{ workouts|length if workouts else 0 }}
-    </div>
-    
-    {% if current_streak > 0 %}
-        <div style="background: #4CAF50; color: white; padding: 10px; margin: 10px 0; border-radius: 4px;">
-            🔥 Current Streak: {{ current_streak }} days
-        </div>
-    {% endif %}
-    
-    {% if workouts and workouts|length > 0 %}
-        <!-- loop through each workout and display details -->
-        {% for workout in workouts %}
-            <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0;">
-                <h3>workout {{ loop.index }}</h3>
-                <p>started: {{ workout.start_time }}</p>
-                <p>ended: {{ workout.end_time }}</p>
-                
-                <!-- list of exercises performed during this workout -->
-                <h4>exercises:</h4>
-                <ul>
-                {% for exercise in workout.exercises %}
-                    <li>{{ exercise.name }}: {{ exercise.sets }}x{{ exercise.reps }} @ {{ exercise.weight }}</li>
-                {% endfor %}
-                </ul>
-                
-                <!-- optional workout notes if any were added -->
-                {% if workout.notes %}
-                    <p><strong>notes:</strong> {{ workout.notes }}</p>
+{% block content %}
+<div class="container">
+    <h1>Your Workout History</h1>
+
+    <!-- Progress Stats Section -->
+    <div class="stats-section">
+        <h2>Progress Overview</h2>
+        <p>Number of Workouts: {{ workouts|length }}</p>
+        <p>🔥 Current Streak: {{ current_streak }} days</p>
+        
+        {% if progress_stats %}
+            <div class="recent-activity">
+                <h3>Recent Activity</h3>
+                <p>This Week: {{ progress_stats.time_periods.week }} workouts</p>
+                <p>Last 2 Weeks: {{ progress_stats.time_periods.two_weeks }} workouts</p>
+                <p>This Month: {{ progress_stats.time_periods.month }} workouts</p>
+            </div>
+
+            <div class="top-exercises">
+                <h3>Most Common Exercises</h3>
+                {% if progress_stats.exercise_frequency.top_exercises %}
+                    {% for exercise in progress_stats.exercise_frequency.top_exercises %}
+                        <p>{{ exercise.name }}: {{ exercise.count }} times</p>
+                    {% endfor %}
+                {% else %}
+                    <p>No exercise data available</p>
                 {% endif %}
             </div>
-        {% endfor %}
-    {% else %}
-        <!-- message displayed if there are no past workouts -->
-        <p>no workouts found. <a href="{{ url_for('start_workout') }}">start your first workout!</a></p>
-    {% endif %}
 
+            <div class="volume-stats">
+                <h3>Total Volume</h3>
+                <p>{{ progress_stats.total_volume }} lbs</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Workout History Section -->
+    {% for workout in workouts %}
+        <div class="workout-entry">
+            <h3>Workout {{ loop.index }}</h3>
+            <p>Started: {{ workout.start_time }}</p>
+            <p>Ended: {{ workout.end_time }}</p>
+            {% if workout.notes %}
+                <p>Notes: {{ workout.notes }}</p>
+            {% endif %}
+            
+            <h4>Exercises:</h4>
+            <ul>
+            {% for exercise in workout.exercises %}
+                <li>{{ exercise.name }}: {{ exercise.sets }}x{{ exercise.reps }} @ {{ exercise.weight }}</li>
+            {% endfor %}
+            </ul>
+        </div>
+    {% endfor %}
+</div>
 {% endblock %}

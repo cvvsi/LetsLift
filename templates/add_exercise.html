@@ -97,7 +97,18 @@
 
    <!-- finishes the workout -->
    <form action="{{ url_for('finish_workout') }}" method="post">
-       <button type="submit">Finish Workout</button>
+       <div class="form-group">
+           <label for="workout_date">Workout Date (for testing streaks):</label>
+           <input type="date" id="workout_date" name="workout_date" class="form-control">
+           <small class="form-text text-muted">Leave blank to use current date</small>
+       </div>
+       
+       <div class="form-group">
+           <label for="workout_notes">Workout Notes:</label>
+           <textarea id="workout_notes" name="workout_notes" class="form-control"></textarea>
+       </div>
+       
+       <button type="submit" class="btn btn-success">Finish Workout</button>
    </form>
 
    <!-- prevents the user from leaving the page with unsaved data -->

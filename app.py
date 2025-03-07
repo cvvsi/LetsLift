@@ -3,6 +3,7 @@ from datetime import datetime
 import sqlite3
 from contextlib import contextmanager
 import json
+import os
 
 app = Flask(__name__)
 app.secret_key = 'dev'
@@ -22,91 +23,99 @@ WORKOUT_TEMPLATES = {
     ]
 }
 
-# database connection manager
+# Simplified service communication
+def write_to_service(service_name, data):
+    """Write data to a service's input file"""
+    try:
+        filename = f'data/{service_name}_input.txt'
+        with open(filename, 'w') as f:
+            json.dump(data, f)
+        print(f"Data sent to {service_name} service")
+    except Exception as e:
+        print(f"Error writing to {service_name} service: {e}")
+
+def read_from_service(service_name):
+    """Read data from a service's output file"""
+    try:
+        filename = f'data/{service_name}_output.txt'
+        if os.path.exists(filename):
+            with open(filename, 'r') as f:
+                return json.load(f)
+    except Exception as e:
+        print(f"Error reading from {service_name} service: {e}")
+    return None
+
 @contextmanager
 def get_db():
-   db = sqlite3.connect('workouts.db')
-   db.row_factory = sqlite3.Row
-   try:
-       yield db
-   finally:
-       db.close()
+    db = sqlite3.connect('workouts.db')
+    db.row_factory = sqlite3.Row
+    try:
+        yield db
+    finally:
+        db.close()
 
-# create database tables if they don't exist
 def init_db():
-   with get_db() as db:
-       # create workouts table
-       db.execute('''
-       CREATE TABLE IF NOT EXISTS workouts (
-           id INTEGER PRIMARY KEY,
-           start_time TEXT,
-           end_time TEXT,
-           notes TEXT
-       )''')
-       
-       # create exercises table with foreign key to workouts
-       db.execute('''
-       CREATE TABLE IF NOT EXISTS exercises (
-           id INTEGER PRIMARY KEY,
-           workout_id INTEGER,
-           name TEXT,
-           weight TEXT,
-           sets INTEGER,
-           reps INTEGER,
-           FOREIGN KEY (workout_id) REFERENCES workouts (id)
-       )''')
-       db.commit()
+    with get_db() as db:
+        db.execute('''
+        CREATE TABLE IF NOT EXISTS workouts (
+            id INTEGER PRIMARY KEY,
+            start_time TEXT,
+            end_time TEXT,
+            notes TEXT
+        )''')
+        
+        db.execute('''
+        CREATE TABLE IF NOT EXISTS exercises (
+            id INTEGER PRIMARY KEY,
+            workout_id INTEGER,
+            name TEXT,
+            weight TEXT,
+            sets INTEGER,
+            reps INTEGER,
+            FOREIGN KEY (workout_id) REFERENCES workouts (id)
+        )''')
+        db.commit()
 
-# save completed workout to database
 def save_workout(workout):
-   with get_db() as db:
-       cursor = db.cursor()
-       # save workout details
-       cursor.execute(
-           'INSERT INTO workouts (start_time, end_time, notes) VALUES (?, ?, ?)',
-           (workout['start_time'], workout['end_time'], workout.get('notes', ''))
-       )
-       workout_id = cursor.lastrowid
-       
-       # save each exercise for this workout
-       for exercise in workout['exercises']:
-           cursor.execute(
-               'INSERT INTO exercises (workout_id, name, weight, sets, reps) VALUES (?, ?, ?, ?, ?)',
-               (workout_id, exercise['name'], exercise['weight'], exercise['sets'], exercise['reps'])
-           )
-       db.commit()
+    with get_db() as db:
+        cursor = db.cursor()
+        cursor.execute(
+            'INSERT INTO workouts (start_time, end_time, notes) VALUES (?, ?, ?)',
+            (workout['start_time'], workout['end_time'], workout.get('notes', ''))
+        )
+        workout_id = cursor.lastrowid
+        
+        for exercise in workout['exercises']:
+            cursor.execute(
+                'INSERT INTO exercises (workout_id, name, weight, sets, reps) VALUES (?, ?, ?, ?, ?)',
+                (workout_id, exercise['name'], exercise['weight'], exercise['sets'], exercise['reps'])
+            )
+        db.commit()
 
-# get all workouts with their exercises
 def get_workouts():
-   with get_db() as db:
-       workouts = []
-       # get workouts in reverse chronological order
-       for row in db.execute('SELECT * FROM workouts ORDER BY id DESC'):
-           workout = dict(row)
-           workout['exercises'] = []
-           # get all exercises for each workout
-           for ex in db.execute('SELECT * FROM exercises WHERE workout_id = ?', (row['id'],)):
-               workout['exercises'].append(dict(ex))
-           workouts.append(workout)
-       return workouts
+    with get_db() as db:
+        workouts = []
+        for row in db.execute('SELECT * FROM workouts ORDER BY id DESC'):
+            workout = dict(row)
+            workout['exercises'] = []
+            for ex in db.execute('SELECT * FROM exercises WHERE workout_id = ?', (row['id'],)):
+                workout['exercises'].append(dict(ex))
+            workouts.append(workout)
+        return workouts
 
-# save current workout to a temporary file
 def save_current_workout(workout):
-   with open('current_workout.json', 'w') as f:
-       json.dump(workout, f)
+    with open('current_workout.json', 'w') as f:
+        json.dump(workout, f)
 
-# load current workout from a temporary file
 def load_current_workout():
-   try:
-       with open('current_workout.json', 'r') as f:
-           return json.load(f)
-   except:
-       return {'exercises': []}
+    try:
+        with open('current_workout.json', 'r') as f:
+            return json.load(f)
+    except:
+        return {'exercises': []}
 
-# home page route - shows benefits and disclaimers
 @app.route('/')
 def home():
-    # disclaimer messages about data privacy and auto-saving
     disclaimers = {
         'data_privacy': 'workouts will be stored locally on your device',
         'time_cost': 'each workout session takes about 30-60 minutes to log properly',
@@ -114,35 +123,30 @@ def home():
     }
     return render_template('home.html', 
         workout_count=len(get_workouts()),
-        disclaimers=disclaimers,
-        benefits=[...])
+        disclaimers=disclaimers)
 
-# start new workout with a timer
 @app.route('/workout/start', methods=['GET'])
 def start_workout():
-   session['workout_in_progress'] = True
-   session['start_timestamp'] = datetime.now().timestamp()
-   session['workout_timer'] = '00:00:00'
-   session['last_set_time'] = None
+    session['workout_in_progress'] = True
+    session['start_timestamp'] = datetime.now().timestamp()
+    session['workout_timer'] = '00:00:00'
+    session['last_set_time'] = None
 
-   # initialize a new workout session
-   current_workout = {
-       'exercises': [],
-       'start_time': datetime.now().strftime("%Y-%m-%d %H:%M"),
-       'notes': '',
-       'step': 1,
-       'total_steps': 3
-   }
-   save_current_workout(current_workout)
-   return redirect(url_for('add_exercise'))
+    current_workout = {
+        'exercises': [],
+        'start_time': datetime.now().strftime("%Y-%m-%d %H:%M"),
+        'notes': '',
+        'step': 1,
+        'total_steps': 3
+    }
+    save_current_workout(current_workout)
+    return redirect(url_for('add_exercise'))
 
-# add an exercise to the workout
 @app.route('/workout/add-exercise', methods=['GET', 'POST'])
 def add_exercise():
     if not session.get('workout_in_progress'):
         return redirect(url_for('home'))
 
-    # Update timer
     if session.get('start_timestamp'):
         elapsed = int(datetime.now().timestamp() - session['start_timestamp'])
         hours = elapsed // 3600
@@ -153,7 +157,6 @@ def add_exercise():
     if request.method == 'POST':
         current_workout = load_current_workout()
         
-        # IH#7: Handle template selection
         template_name = request.form.get('template_select')
         if template_name and template_name in WORKOUT_TEMPLATES:
             current_workout['exercises'].extend(WORKOUT_TEMPLATES[template_name])
@@ -161,12 +164,11 @@ def add_exercise():
             save_current_workout(current_workout)
             return redirect(url_for('add_exercise'))
 
-        # IH#8: Check rest time
         if session.get('last_set_time'):
             last_set = datetime.strptime(session['last_set_time'], "%H:%M:%S")
             now = datetime.now()
             rest_time = (now - last_set).seconds
-            if rest_time < 90:  # 90 seconds rest
+            if rest_time < 90:
                 flash(f'Warning: Only {rest_time} seconds rest. Recommended: 90 seconds')
 
         exercise = {
@@ -183,68 +185,123 @@ def add_exercise():
 
     return render_template('add_exercise.html',
         current_exercises=load_current_workout().get('exercises', []),
-        workout_templates=WORKOUT_TEMPLATES,  
+        workout_templates=WORKOUT_TEMPLATES,
         workout_start=session.get('workout_start_time'),
         last_set=session.get('last_set_time'))
 
-# undo last exercise added
 @app.route('/workout/undo-last', methods=['POST'])
 def undo_last_exercise():
-   current_workout = load_current_workout()
-   if current_workout.get('exercises'):
-       removed = current_workout['exercises'].pop()
-       save_current_workout(current_workout)
-       flash(f'removed {removed["name"]}. try again or continue.')
-   return redirect(url_for('add_exercise'))
+    current_workout = load_current_workout()
+    if current_workout.get('exercises'):
+        removed = current_workout['exercises'].pop()
+        save_current_workout(current_workout)
+        flash(f'removed {removed["name"]}. try again or continue.')
+    return redirect(url_for('add_exercise'))
 
-# complete and save workout
 @app.route('/workout/finish', methods=['POST'])
 def finish_workout():
     current_workout = load_current_workout()
     if not current_workout.get('exercises'):
-        flash('add at least one exercise to save your workout!')
+        flash('Add at least one exercise to save your workout!')
         return redirect(url_for('add_exercise'))
 
-    # record end time and save workout
-    current_workout['end_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
-    current_workout['notes'] = request.form.get('workout_notes', '')
+    # Get custom date if provided, otherwise use current date
+    workout_date = request.form.get('workout_date')
+    if workout_date:
+        try:
+            # Validate date format
+            workout_datetime = datetime.strptime(workout_date, '%Y-%m-%d')
+            current_workout['start_time'] = workout_datetime.strftime("%Y-%m-%d %H:%M")
+            current_workout['end_time'] = workout_datetime.strftime("%Y-%m-%d %H:%M")
+        except ValueError:
+            flash('Invalid date format. Using current date.')
+            current_workout['end_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
+    else:
+        current_workout['end_time'] = datetime.now().strftime("%Y-%m-%d %H:%M")
     
+    current_workout['notes'] = request.form.get('workout_notes', '')
     save_workout(current_workout)
     
-    # Write today's date to workout_date.txt (microservice A, streaks)
-    today = datetime.now().strftime("%m-%d-%Y")  # This will use the current year (2024)
-    microservice_path = "Microservice A (Built by teammate)/microservice_a-main/workout_date.txt"
-    with open(microservice_path, 'w') as f:
-        f.write(today)
+    user_id = session.get('user_id', 'default_user')
     
-    import os
+    # 1. Update Streak (Microservice A)
+    streak_date = workout_datetime.strftime("%m-%d-%Y") if workout_date else datetime.now().strftime("%m-%d-%Y")
+    with open('data/workout_date.txt', 'w') as f:
+        f.write(streak_date)
+    print(f"Streak Service: Workout date recorded: {streak_date}")
+    
+    # 2. Create Social Post (Microservice B)
+    exercises_summary = ", ".join([ex['name'] for ex in current_workout['exercises']])
+    write_to_service('social', {
+        'user_id': user_id,
+        'content': f'Completed a workout! 💪 Exercises: {exercises_summary}'
+    })
+    
+    # 3. Update Progress Stats (Microservice C)
+    write_to_service('progress', {
+        'workouts': get_workouts(),
+        'current_workout': current_workout
+    })
+    
+    # 4. Create Notification (Microservice D)
+    write_to_service('notification', {
+        'user_id': user_id,
+        'type': 'workout_complete'
+    })
+    
     if os.path.exists('current_workout.json'):
         os.remove('current_workout.json')
     session.pop('workout_in_progress', None)
     
-    flash('great job! workout saved.')
+    flash('Great job! Workout saved. 💪')
     return redirect(url_for('view_history'))
 
-# view workout history
 @app.route('/history')
 def view_history():
     workouts = get_workouts()
     
-    # Reads current streak from streak_results.txt (microservice A, streaks)
+    # Send all workouts to progress service
+    write_to_service('progress', {
+        'workouts': workouts,
+        'current_workout': None
+    })
+    
+    # Get progress stats and debug print
+    progress_stats = read_from_service('progress') or {}
+    print("DEBUG - Progress Stats:", json.dumps(progress_stats, indent=2))
+    
+    # Get streak from Microservice A
     current_streak = 0
     try:
-        streak_path = "Microservice A (Built by teammate)/microservice_a-main/streak_results.txt"
-        with open(streak_path, 'r') as f:
+        with open('data/streak.txt', 'r') as f:
             current_streak = int(f.read().strip())
     except (FileNotFoundError, ValueError):
+        pass
+    
+    # Get social posts from Microservice B
+    social_posts = []
+    try:
+        with open('data/social_posts.json', 'r') as f:
+            social_posts = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        pass
+    
+    # Get notifications from Microservice D
+    notifications = []
+    try:
+        with open('data/notifications.json', 'r') as f:
+            notifications = json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
         pass
         
     return render_template('history.html', 
         workouts=workouts,
         current_streak=current_streak,
-        modifications_enabled=True)
+        progress_stats=progress_stats,
+        social_posts=social_posts,
+        notifications=notifications)
 
-# initialize database and start app
 if __name__ == '__main__':
-   init_db()
-   app.run(debug=True)
+    os.makedirs('data', exist_ok=True)
+    init_db()
+    app.run(debug=True)
