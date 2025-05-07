@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content %}
+
+    <!-- main welcome message and benefits of tracking workouts -->
+    <div class="benefits">
+        <h2>Welcome to letslift!</h2>
+        <h3>Benefits of tracking your workouts:</h3>
+        <ul>
+            <li>Monitor your progress over time</li>
+            <li>Share your journey with your friends</li>
+            <li>Remember that public posts are visible to all others</li>
+            <li>Comments remain editable for 24 hours</li>
+        </ul>
+
+        <!-- show workout count only if the user has logged at least one workout -->
+        {% if workout_count > 0 %}
+            <p>You've logged {{ workout_count }} workouts so far. keep it up!</p>
+        {% endif %}
+    </div>
+
+    <!-- call-to-action button to start a new workout -->
+    <div style="text-align: center; margin-top: 2em;">
+        <a href="{{ url_for('start_workout') }}" 
+           style="padding: 1em 2em; background: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+            start new workout
+        </a>
+    </div>
+
+{% endblock %}
