@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card">
+    <div class="workout-timer">
+        {{ session.get('workout_timer', '00:00:00') }}
+    </div>
+    <p class="timer-subtitle">Workout Duration</p>
+    
+    {% if session.get('last_set_time') and current_exercises %}
+        <div class="last-set-info">
+            <span class="label">Last Set Completed:</span>
+            <span class="value">{{ session.get('last_set_time', 'N/A') }}</span>
+        </div>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h2>Add Exercises to Your Workout</h2>
+    <p>Fill in exercise details below or use a template to get started quickly.</p>
+</div>
+
+<!-- Exercise history section -->
+{% if current_exercises %}
+    <div class="card" id="exerciseHistory">
+        <h2>Current Workout Progress</h2>
+        <div class="exercise-list">
+            {% for exercise in current_exercises %}
+                <div class="exercise-item">
+                    <div class="exercise-details">
+                        <div class="exercise-name">{{ exercise.name }}</div>
+                        <div class="exercise-specs">{{ exercise.sets }}x{{ exercise.reps }} @ {{ exercise.weight }}lbs</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <form action="{{ url_for('undo_last_exercise') }}" method="post">
+            <button type="submit" class="btn btn-outline">Undo Last Exercise</button>
+        </form>
+    </div>
+{% endif %}
+
+<!-- Template selection -->
+<div class="card">
+    <h2>Quick Start with Template</h2>
+    <form method="post">
+        <div class="form-group">
+            <select name="template_select" class="form-control">
+                <option value="">Choose a template...</option>
+                {% for template_name in workout_templates %}
+                    <option value="{{ template_name }}">{{ template_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn">Load Template</button>
+    </form>
+</div>
+
+<!-- Manual exercise entry -->
+<div class="card">
+    <h2>Add Exercise Manually</h2>
+    <form method="post">
+        <div class="form-group">
+            <label>Exercise Name</label>
+            <input type="text" name="exercise_name" required class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Weight (lbs)</label>
+            <input type="number" name="weight" required class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Sets</label>
+            <input type="number" name="sets" value="3" required class="form-control">
+        </div>
+
+        <div class="form-group">
+            <label>Reps</label>
+            <input type="number" name="reps" value="10" required class="form-control">
+        </div>
+
+        <button type="submit" class="btn btn-block">Add Exercise</button>
+    </form>
+</div>
+
+<!-- Finish workout section -->
+<div class="card">
+    <h2>Finish Workout</h2>
+    <form action="{{ url_for('finish_workout') }}" method="post">
+        <div class="form-group">
+            <label for="workout_date">Workout Date</label>
+            <input type="date" id="workout_date" name="workout_date" class="form-control">
+            <div class="input-hint">Leave blank to use current date</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="workout_notes">Workout Notes</label>
+            <textarea id="workout_notes" name="workout_notes" class="form-control" rows="3"></textarea>
+        </div>
+        
+        <button type="submit" class="btn btn-block">Complete Workout</button>
+    </form>
+</div>
+
+<!-- Prevent accidental navigation away -->
+<script>
+window.onbeforeunload = function() {
+    if (document.getElementById('exerciseHistory')) {
+        return "You have unsaved workout data. Are you sure you want to leave?";
+    }
+};
+</script>
+
+{% endblock %}

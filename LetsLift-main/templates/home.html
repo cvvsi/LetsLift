@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="welcome-section">
+    <div class="card">
+        <h2>Welcome to LetsLift!</h2>
+        <p>Track your workouts, analyze your progress, and reach your fitness goals.</p>
+        
+        {% if workout_count > 0 %}
+            <div class="stats-highlight">
+                <span class="value">{{ workout_count }}</span>
+                <span class="label">Workouts Completed</span>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="card benefits">
+    <h2>Benefits of Tracking Your Workouts</h2>
+    <ul>
+        <li>Monitor your progress and strength gains over time</li>
+        <li>Stay consistent with your fitness routine</li>
+        <li>Identify areas for improvement in your training</li>
+        <li>Maintain motivation by seeing your results</li>
+    </ul>
+</div>
+
+{% if disclaimers %}
+<div class="card">
+    <h2>App Information</h2>
+    <ul class="info-list">
+        <li><strong>Privacy:</strong> {{ disclaimers.data_privacy }}</li>
+        <li><strong>Time Investment:</strong> {{ disclaimers.time_cost }}</li>
+        <li><strong>Data Security:</strong> {{ disclaimers.auto_save }}</li>
+    </ul>
+</div>
+{% endif %}
+
+<div class="start-workout-btn">
+    <a href="{{ url_for('start_workout') }}" class="btn btn-block">
+        Start New Workout
+    </a>
+</div>
+
+{% endblock %}

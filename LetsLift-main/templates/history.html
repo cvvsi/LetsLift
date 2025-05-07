@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="page-header">
+    <h2>Workout History</h2>
+</div>
+
+<!-- Progress Stats Cards -->
+<div class="stats-section">
+    <div class="stat-card">
+        <h3>Total Workouts</h3>
+        <div class="value">{{ workouts|length }}</div>
+    </div>
+    
+    <div class="stat-card">
+        <h3>Current Streak</h3>
+        <div class="value">{{ current_streak }} days 🔥</div>
+    </div>
+    
+    {% if progress_stats %}
+        <div class="stat-card">
+            <h3>Monthly Progress</h3>
+            <div class="value">{{ progress_stats.time_periods.month }}</div>
+            <div class="label">Workouts This Month</div>
+        </div>
+        
+        {% if progress_stats.total_volume %}
+        <div class="stat-card">
+            <h3>Total Volume</h3>
+            <div class="value">{{ progress_stats.total_volume }}</div>
+            <div class="label">lbs Lifted</div>
+        </div>
+        {% endif %}
+    {% endif %}
+</div>
+
+{% if progress_stats and progress_stats.exercise_frequency.top_exercises %}
+<div class="card">
+    <h2>Most Frequent Exercises</h2>
+    <div class="exercise-frequency">
+        {% for exercise in progress_stats.exercise_frequency.top_exercises %}
+            <div class="frequency-item">
+                <div class="exercise-name">{{ exercise.name }}</div>
+                <div class="exercise-count">{{ exercise.count }} times</div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Workout History -->
+<div class="page-header">
+    <h2>Recent Workouts</h2>
+</div>
+
+{% for workout in workouts %}
+    <div class="workout-entry">
+        <h3>
+            <span>{{ workout.start_time.split()[0] }}</span>
+            <span class="date">{{ workout.start_time.split()[1] }}</span>
+        </h3>
+        
+        {% if workout.notes %}
+            <div class="workout-notes">
+                <i class="fas fa-sticky-note"></i> {{ workout.notes }}
+            </div>
+        {% endif %}
+        
+        <div class="exercise-list">
+            {% for exercise in workout.exercises %}
+                <div class="exercise-item">
+                    <div class="exercise-details">
+                        <div class="exercise-name">{{ exercise.name }}</div>
+                        <div class="exercise-specs">{{ exercise.sets }}x{{ exercise.reps }} @ {{ exercise.weight }}lbs</div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endfor %}
+
+{% if not workouts %}
+<div class="card empty-state">
+    <div class="empty-icon">
+        <i class="fas fa-dumbbell"></i>
+    </div>
+    <h3>No Workouts Yet</h3>
+    <p>Start tracking your first workout to see your history here!</p>
+    <a href="{{ url_for('start_workout') }}" class="btn">Start Workout</a>
+</div>
+{% endif %}
+
+{% endblock %}
